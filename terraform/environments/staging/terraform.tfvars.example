@@ -1,0 +1,28 @@
+aws_region         = "us-east-1"
+environment        = "staging"
+service_name       = "conquest-api-staging"
+ecr_repository_name = "conquest-api-staging"
+image_tag          = "staging"
+
+# Enable only after confirming the GitHub repository and protected environment.
+github_oidc_enabled = false
+# github_repository = "OWNER/REPOSITORY"
+# github_environment = "staging"
+# github_oidc_provider_arn = "arn:aws:iam::000000000000:oidc-provider/token.actions.githubusercontent.com"
+
+runtime_environment_variables = {
+  # Replace with the final HTTPS API origin before enabling browser clients.
+  APP_URL     = "https://api-staging.example.com"
+  CORS_ORIGIN = "https://api-staging.example.com"
+}
+
+runtime_secret_arns = {
+  DATABASE_URL = "arn:aws:secretsmanager:us-east-1:000000000000:secret:conquest/staging/DATABASE_URL-example"
+  JWT_SECRET   = "arn:aws:secretsmanager:us-east-1:000000000000:secret:conquest/staging/JWT_SECRET-example"
+}
+
+tags = {
+  Project     = "conquest"
+  Environment = "staging"
+  ManagedBy   = "Terraform"
+}

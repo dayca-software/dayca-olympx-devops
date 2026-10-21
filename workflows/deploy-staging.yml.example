@@ -1,0 +1,119 @@
+name: OlympX Deploy Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  APP_RUNNER_SERVICE_ARN: ${{ vars.APP_RUNNER_SERVICE_ARN }}
+
+jobs:
+  deploy:
+    name: Build and deploy API to App Runner Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: olympx-api
+
+      - name: Checkout shared contracts
+        uses: actions/checkout@v4
+        with:
+          repository: dayca-software/dayca-olympx-contracts
+          ref: v0.1.0
+          token: ${{ secrets.CONTRACTS_READ_TOKEN || github.token }}
+          path: olympx-contracts
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prepare workspace build context
+        run: |
+          set -euo pipefail
+          cat > package.json <<'EOF'
+          {"private":true,"packageManager":"pnpm@11.9.0"}
+          EOF
+          cat > pnpm-workspace.yaml <<'EOF'
+          packages:
+            - "olympx-api"
+            - "olympx-contracts"
+          EOF
+          pnpm install --lockfile-only --ignore-scripts
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push immutable image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${ECR_REPOSITORY}"
+          docker build -f olympx-api/Dockerfile -t "${image}:${IMAGE_TAG}" .
+          docker push "${image}:${IMAGE_TAG}"
+          docker tag "${image}:${IMAGE_TAG}" "${image}:staging"
+          docker push "${image}:staging"
+
+      - name: Start App Runner deployment
+        id: deploy
+        run: |
+          set -euo pipefail
+          operation_id="$(aws apprunner start-deployment \
+            --service-arn "${APP_RUNNER_SERVICE_ARN}" \
+            --query 'OperationId' \
+            --output text)"
+          echo "operation_id=${operation_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: Wait for deployment
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            operation_status="$(aws apprunner describe-operation \
+              --service-arn "${APP_RUNNER_SERVICE_ARN}" \
+              --operation-id "${{ steps.deploy.outputs.operation_id }}" \
+              --query 'Operation.Status' \
+              --output text)"
+            echo "App Runner operation: ${operation_status}"
+            case "${operation_status}" in
+              SUCCEEDED) exit 0 ;;
+              FAILED|ROLLBACK_FAILED) exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo 'App Runner deployment timed out.' >&2
+          exit 1
+
+      - name: Smoke health endpoint
+        run: |
+          set -euo pipefail
+          service_url="$(aws apprunner describe-service \
+            --service-arn "${APP_RUNNER_SERVICE_ARN}" \
+            --query 'Service.ServiceUrl' \
+            --output text)"
+          curl --fail --silent --show-error "https://${service_url}/api/health"
