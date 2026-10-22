@@ -35,35 +35,25 @@ olympx-devops/
 
 No se guardan valores de Secrets Manager, credenciales AWS, URLs privadas de Neon ni archivos `.tfvars` reales en el repositorio.
 
-## Punto De Reanudacion
+## Estado Actual
 
-La activacion queda pausada hasta completar estos prerequisitos:
+Staging ya está provisionado y validado en AWS:
 
-- [ ] Confirmar la region AWS.
-- [ ] Crear el bucket S3 remoto de Terraform con cifrado, versionado y bloqueo.
-- [ ] Crear los secrets de `DATABASE_URL` y `JWT_SECRET` de staging en Secrets Manager y registrar sus ARNs.
-- [ ] Configurar `github_repository` y activar `github_oidc_enabled` para que Terraform cree el role IAM OIDC.
-- [ ] Crear la imagen inicial `staging` en ECR.
+- [x] Región `us-east-1`, state remoto y Secrets Manager configurados.
+- [x] ECR `conquest-api-staging` y App Runner `conquest-api-staging` activos.
+- [x] OIDC de GitHub y rol `conquest-github-actions-staging` creados.
+- [x] Imagen actual publicada con tag SHA y `staging`.
+- [x] Migraciones Prisma aplicadas y `/api/health` validado.
+- [x] CORS limitado temporalmente al dominio HTTPS de App Runner.
 
-Orden de continuacion:
+El workflow de staging está preparado localmente en `olympx-api/.github/workflows/deploy-staging.yml` y es
+manual-only. La rama local `staging` queda destinada a QA; `main` se reserva para producción.
 
-1. Copiar `terraform.tfvars.example` y `backend.hcl.example` dentro de `terraform/environments/staging`.
-2. Ejecutar `terraform init -backend-config=backend.hcl`.
-3. Ejecutar una sola vez `terraform apply -target=module.ecr` para crear el repositorio inicial.
-4. Construir y publicar `olympx-api:staging` usando `olympx-api/Dockerfile` desde la raiz del proyecto.
-5. Ejecutar `terraform plan` y `terraform apply` completos para crear App Runner y sus roles de staging.
-6. Obtener `github_actions_role_arn` y configurarlo como `AWS_ROLE_TO_ASSUME` en GitHub.
-7. Copiar los workflows `.example` a `.github/workflows/` y configurar sus variables protegidas.
-8. Ejecutar el primer deploy por GitHub Actions, esperar la aplicación de migraciones y validar `/api/health`.
-
-El bootstrap de ECR y la primera publicación requieren una identidad AWS local temporal con permisos suficientes.
-Las credenciales no deben guardarse en el repositorio ni en GitHub; los deploys posteriores deben usar OIDC.
-
-En el environment `staging` de GitHub configurar:
+Cuando el workflow se publique en GitHub, configurar en el environment `staging`:
 
 - Secret `AWS_ROLE_TO_ASSUME`: output `github_actions_role_arn` del stack staging.
 - Variable `AWS_REGION`: valor de `aws_region`.
 - Variable `ECR_REPOSITORY`: valor de `ecr_repository_name`.
 - Variable `APP_RUNNER_SERVICE_ARN`: output `app_runner_service_arn` del stack staging.
 
-No ejecutar `terraform apply` ni publicar infraestructura hasta que los cinco prerequisitos estén marcados.
+No se activan despliegues automáticos hasta publicar el workflow y configurar explícitamente ese environment.

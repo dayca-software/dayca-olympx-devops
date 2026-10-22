@@ -2,13 +2,14 @@ name: OlympX Deploy Staging
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - develop
 
 permissions:
   contents: read
   id-token: write
+
+concurrency:
+  group: olympx-staging-deploy
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -31,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dayca-software/dayca-olympx-contracts
-          ref: v0.1.0
+          ref: main
           token: ${{ secrets.CONTRACTS_READ_TOKEN || github.token }}
           path: olympx-contracts
 
@@ -94,10 +95,10 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 30); do
-            operation_status="$(aws apprunner describe-operation \
+            operation_status="$(aws apprunner list-operations \
               --service-arn "${APP_RUNNER_SERVICE_ARN}" \
-              --operation-id "${{ steps.deploy.outputs.operation_id }}" \
-              --query 'Operation.Status' \
+              --max-results 20 \
+              --query "OperationSummaryList[?Id=='${{ steps.deploy.outputs.operation_id }}'].Status | [0]" \
               --output text)"
             echo "App Runner operation: ${operation_status}"
             case "${operation_status}" in

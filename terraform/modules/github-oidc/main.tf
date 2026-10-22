@@ -72,8 +72,8 @@ data "aws_iam_policy_document" "deployment" {
 
   statement {
     effect    = "Allow"
-    actions   = ["apprunner:DescribeOperation"]
-    resources = ["*"]
+    actions   = ["apprunner:ListOperations"]
+    resources = [var.app_runner_service_arn]
   }
 }
 
