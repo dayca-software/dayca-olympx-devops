@@ -16,7 +16,7 @@ variable "environment" {
 }
 
 variable "service_name" {
-  description = "App Runner service name."
+  description = "Staging API service name."
   type        = string
   default     = "conquest-api-staging"
 }
@@ -28,7 +28,7 @@ variable "ecr_repository_name" {
 }
 
 variable "image_tag" {
-  description = "Deployment tag used by the staging App Runner service."
+  description = "Deployment tag used by the staging service."
   type        = string
   default     = "staging"
 }
@@ -49,6 +49,36 @@ variable "api_memory" {
   description = "App Runner memory size."
   type        = string
   default     = "0.5 GB"
+}
+
+variable "ecs_cpu" {
+  description = "ECS Express Mode CPU units per task."
+  type        = string
+  default     = "256"
+}
+
+variable "ecs_memory" {
+  description = "ECS Express Mode memory in MiB per task."
+  type        = string
+  default     = "512"
+}
+
+variable "ecs_min_task_count" {
+  description = "Minimum number of ECS Express Mode tasks."
+  type        = number
+  default     = 1
+}
+
+variable "ecs_max_task_count" {
+  description = "Maximum number of ECS Express Mode tasks."
+  type        = number
+  default     = 1
+}
+
+variable "ecs_auto_scaling_target_value" {
+  description = "ECS Express Mode CPU target percentage."
+  type        = number
+  default     = 60
 }
 
 variable "min_instance_size" {

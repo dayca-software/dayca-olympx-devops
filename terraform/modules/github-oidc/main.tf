@@ -64,16 +64,10 @@ data "aws_iam_policy_document" "deployment" {
   statement {
     effect = "Allow"
     actions = [
-      "apprunner:DescribeService",
-      "apprunner:StartDeployment",
+      "ecs:DescribeExpressGatewayService",
+      "ecs:UpdateExpressGatewayService",
     ]
-    resources = [var.app_runner_service_arn]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["apprunner:ListOperations"]
-    resources = [var.app_runner_service_arn]
+    resources = [var.ecs_express_service_arn]
   }
 }
 

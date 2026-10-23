@@ -3,19 +3,24 @@ output "ecr_repository_url" {
   value       = module.ecr.repository_url
 }
 
-output "app_runner_service_arn" {
-  description = "App Runner service ARN used by the staging deployment workflow."
-  value       = module.app_runner.service_arn
+output "ecs_express_service_arn" {
+  description = "ECS Express Mode service ARN used by the staging deployment workflow."
+  value       = module.ecs_express.service_arn
 }
 
-output "app_runner_service_url" {
-  description = "Managed App Runner staging URL."
-  value       = module.app_runner.service_url
+output "ecs_express_service_url" {
+  description = "Managed ECS Express Mode staging URL."
+  value       = module.ecs_express.service_url
 }
 
-output "app_runner_ecr_access_role_arn" {
-  description = "IAM role used by App Runner to pull staging images from ECR."
-  value       = aws_iam_role.apprunner_ecr_access.arn
+output "ecs_task_execution_role_arn" {
+  description = "ECS task execution role ARN."
+  value       = aws_iam_role.ecs_task_execution.arn
+}
+
+output "ecs_infrastructure_role_arn" {
+  description = "ECS Express Mode infrastructure role ARN."
+  value       = aws_iam_role.ecs_infrastructure.arn
 }
 
 output "github_actions_role_arn" {

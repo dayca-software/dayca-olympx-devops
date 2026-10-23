@@ -37,8 +37,8 @@ variable "ecr_repository_arn" {
   type        = string
 }
 
-variable "app_runner_service_arn" {
-  description = "App Runner service ARN allowed for deployment operations."
+variable "ecs_express_service_arn" {
+  description = "ECS Express Mode service ARN allowed for deployment operations."
   type        = string
 }
 
