@@ -39,18 +39,6 @@ variable "api_port" {
   default     = 3001
 }
 
-variable "api_cpu" {
-  description = "App Runner CPU size."
-  type        = string
-  default     = "0.25 vCPU"
-}
-
-variable "api_memory" {
-  description = "App Runner memory size."
-  type        = string
-  default     = "0.5 GB"
-}
-
 variable "ecs_cpu" {
   description = "ECS Express Mode CPU units per task."
   type        = string
@@ -79,24 +67,6 @@ variable "ecs_auto_scaling_target_value" {
   description = "ECS Express Mode CPU target percentage."
   type        = number
   default     = 60
-}
-
-variable "min_instance_size" {
-  description = "Minimum App Runner instances."
-  type        = number
-  default     = 1
-}
-
-variable "max_instance_size" {
-  description = "Maximum App Runner instances."
-  type        = number
-  default     = 1
-}
-
-variable "max_concurrency" {
-  description = "Maximum concurrent requests per App Runner instance."
-  type        = number
-  default     = 80
 }
 
 variable "runtime_environment_variables" {

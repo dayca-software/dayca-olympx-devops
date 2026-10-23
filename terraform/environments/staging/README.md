@@ -3,8 +3,9 @@
 Este stack crea únicamente el entorno remoto de staging de la API:
 
 - ECR `conquest-api-staging`.
-- App Runner `conquest-api-staging`.
-- IAM separado para pull de ECR, lectura de Secrets Manager y despliegue OIDC.
+- ECS Express Mode `conquest-api-staging` sobre Fargate.
+- IAM separado para ejecución ECS, infraestructura Express, lectura de Secrets Manager y despliegue OIDC.
+- CloudWatch Logs `/aws/ecs/conquest-api-staging`.
 - PostgreSQL Neon externo, conectado mediante los secretos de Secrets Manager.
 
 No contiene credenciales ni ejecuta `terraform apply` automáticamente.
@@ -19,7 +20,7 @@ No contiene credenciales ni ejecuta `terraform apply` automáticamente.
 
 ## Bootstrap
 
-Desde `conquest-devops/terraform/environments/staging`:
+Desde `olympx-devops/terraform/environments/staging`:
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -33,7 +34,7 @@ terraform apply -target=module.ecr
 Después de crear ECR, publicar la imagen desde la raíz del workspace:
 
 ```bash
-docker build -f conquest-api/Dockerfile -t "<ecr-repository-url>:staging" .
+docker build -f olympx-api/Dockerfile -t "<ecr-repository-url>:staging" .
 docker push "<ecr-repository-url>:staging"
 ```
 
@@ -42,9 +43,13 @@ Finalmente:
 ```bash
 terraform plan
 terraform apply
-terraform output app_runner_service_url
+terraform output ecs_express_service_url
 ```
 
 Las migraciones Prisma se ejecutan en el arranque del contenedor mediante
-`conquest-api/deploy/start.sh`. Validar la conexión Neon y el estado de migraciones antes de entregar la
-URL al equipo mobile.
+`olympx-api/deploy/start.sh`. Validar la conexión Neon y el estado de migraciones en
+`/aws/ecs/conquest-api-staging` antes de entregar la URL al equipo mobile.
+
+El workflow `olympx-api/.github/workflows/deploy-staging.yml` es manual-only y está restringido a la rama
+`staging`. Requiere configurar en el environment `staging` las variables `AWS_REGION`, `ECR_REPOSITORY` y
+`ECS_EXPRESS_SERVICE_ARN`, además del secret `AWS_ROLE_TO_ASSUME`.

@@ -14,11 +14,12 @@ concurrency:
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  APP_RUNNER_SERVICE_ARN: ${{ vars.APP_RUNNER_SERVICE_ARN }}
+  ECS_EXPRESS_SERVICE_ARN: ${{ vars.ECS_EXPRESS_SERVICE_ARN }}
 
 jobs:
   deploy:
-    name: Build and deploy API to App Runner Staging
+    name: Build and deploy API to ECS Express Mode Staging
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     environment: staging
 
@@ -81,40 +82,26 @@ jobs:
           docker tag "${image}:${IMAGE_TAG}" "${image}:staging"
           docker push "${image}:staging"
 
-      - name: Start App Runner deployment
-        id: deploy
+      - name: Update ECS Express Mode service
         run: |
           set -euo pipefail
-          operation_id="$(aws apprunner start-deployment \
-            --service-arn "${APP_RUNNER_SERVICE_ARN}" \
-            --query 'OperationId' \
+          image="${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}"
+          digest="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY}" \
+            --image-ids imageTag="${{ github.sha }}" \
+            --query 'imageDetails[0].imageDigest' \
             --output text)"
-          echo "operation_id=${operation_id}" >> "${GITHUB_OUTPUT}"
-
-      - name: Wait for deployment
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 30); do
-            operation_status="$(aws apprunner list-operations \
-              --service-arn "${APP_RUNNER_SERVICE_ARN}" \
-              --max-results 20 \
-              --query "OperationSummaryList[?Id=='${{ steps.deploy.outputs.operation_id }}'].Status | [0]" \
-              --output text)"
-            echo "App Runner operation: ${operation_status}"
-            case "${operation_status}" in
-              SUCCEEDED) exit 0 ;;
-              FAILED|ROLLBACK_FAILED) exit 1 ;;
-            esac
-            sleep 10
-          done
-          echo 'App Runner deployment timed out.' >&2
-          exit 1
+          aws ecs update-express-gateway-service \
+            --service-arn "${ECS_EXPRESS_SERVICE_ARN}" \
+            --primary-container "image=${image}@${digest}" \
+            --monitor-resources DEPLOYMENT \
+            --monitor-mode TEXT-ONLY
 
       - name: Smoke health endpoint
         run: |
           set -euo pipefail
-          service_url="$(aws apprunner describe-service \
-            --service-arn "${APP_RUNNER_SERVICE_ARN}" \
-            --query 'Service.ServiceUrl' \
+          service_url="$(aws ecs describe-express-gateway-service \
+            --service-arn "${ECS_EXPRESS_SERVICE_ARN}" \
+            --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' \
             --output text)"
-          curl --fail --silent --show-error "https://${service_url}/api/health"
+          curl --fail --silent --show-error "${service_url}/api/health"

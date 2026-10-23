@@ -3,8 +3,9 @@
 El entorno `staging` crea el primer stack remoto de API:
 
 - Repositorio ECR para la imagen Docker.
-- Roles IAM de pull de ECR y lectura de secrets.
-- Servicio App Runner con health check `/api/health`.
+- Roles IAM de ejecución de tareas ECS, infraestructura ECS Express y lectura de secrets.
+- Servicio ECS Express Mode sobre Fargate con health check `/api/health`.
+- Grupo de CloudWatch Logs para las tareas ECS.
 - Role GitHub OIDC opcional, limitado al repositorio y environment `staging`.
 - Auto scaling limitado para mantener el costo del MVP controlado.
 
@@ -26,7 +27,7 @@ terraform fmt -recursive
 terraform validate
 ```
 
-La primera activacion requiere un bootstrap porque App Runner necesita que exista una imagen en ECR:
+La primera activación requiere un bootstrap porque ECS Express necesita que exista una imagen en ECR:
 
 ```bash
 terraform apply -target=module.ecr
@@ -49,5 +50,12 @@ El bootstrap y el primer push necesitan una identidad AWS local temporal. Despu�
 - ARNs de esos secrets cargados en `terraform.tfvars` local.
 - `github_repository` configurado y `github_oidc_enabled = true` para crear el role OIDC.
 - Imagen `staging` publicada antes del primer `terraform apply` completo.
+
+Después del apply, consultar:
+
+```bash
+terraform output ecs_express_service_url
+terraform output ecs_express_service_arn
+```
 
 El backend remoto es intencionalmente un archivo `.example`: el bucket y su estado deben definirse por ambiente y nunca se deben inventar en este repositorio.
